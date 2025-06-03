@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -11,8 +10,8 @@ import (
 )
 
 type VerifiedUser struct {
-	Username string
-	Token    string
+	Username string `json:"username"`
+	Token    string `json:"token"`
 }
 
 type PostBody struct {
@@ -68,28 +67,28 @@ func VerifyToken(tokenString string) error {
 	return nil
 }
 
-func Login(username string, password string) *VerifiedUser {
+func Login(username string, password string) (*VerifiedUser, error) {
 	user, err := database.GetUser(username, password)
 	if err != nil {
-		log.Fatalf("Invalid credentials: %v", err)
+		return &VerifiedUser{}, fmt.Errorf("invalid credentials: %v", err)
 	}
 	token, err := CreateToken(user.Username)
 	if err != nil {
-		log.Fatalf("Token error: %v", err)
+		return &VerifiedUser{}, fmt.Errorf("token error: %v", err)
 	}
 	verifiedUser := VerifiedUser{user.Username, token}
-	return &verifiedUser
+	return &verifiedUser, nil
 }
 
-func Register(username string, password string) *VerifiedUser {
+func Register(username string, password string) (*VerifiedUser, error) {
 	user, err := database.CreateUser(username, password)
 	if err != nil {
-		log.Fatalf("Cannot register: %v", err)
+		return &VerifiedUser{}, fmt.Errorf("cannot register: %v", err)
 	}
 	token, err := CreateToken(user.Username)
 	if err != nil {
-		log.Fatalf("Token error: %v", err)
+		return &VerifiedUser{}, fmt.Errorf("token error: %v", err)
 	}
 	verifiedUser := VerifiedUser{user.Username, token}
-	return &verifiedUser
+	return &verifiedUser, nil
 }

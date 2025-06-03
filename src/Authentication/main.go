@@ -27,9 +27,12 @@ func main() {
 	router.POST("/authentication/register", func(c *gin.Context) {
 		var postBody PostBody
 		if err := c.ShouldBindJSON(&postBody); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err})
 		}
-		newUser := Register(postBody.Username, postBody.Password)
+		newUser, err := Register(postBody.Username, postBody.Password)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		}
 		c.JSON(http.StatusOK, newUser)
 	})
 
@@ -38,7 +41,10 @@ func main() {
 		if err := c.ShouldBindJSON(&postBody); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		}
-		verifiedUser := Login(postBody.Username, postBody.Password)
+		verifiedUser, err := Login(postBody.Username, postBody.Password)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err})
+		}
 		c.JSON(http.StatusOK, verifiedUser)
 	})
 
