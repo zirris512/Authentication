@@ -10,13 +10,19 @@ import (
 )
 
 type VerifiedUser struct {
-	Username string `json:"username"`
-	Token    string `json:"token"`
+	Username  string `json:"username"`
+	Watchlist []int  `json:"watchlist"`
+	Token     string `json:"token"`
 }
 
 type PostBody struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+type UserWatchlist struct {
+	Username  string `json:"username"`
+	Watchlist []int  `json:"watchlist"`
 }
 
 func GetSecretKey() ([]byte, error) {
@@ -68,7 +74,7 @@ func VerifyToken(tokenString string) error {
 }
 
 func Login(username string, password string) (*VerifiedUser, error) {
-	user, err := database.GetUser(username, password)
+	user, err := database.GetUserByPassword(username, password)
 	if err != nil {
 		return &VerifiedUser{}, fmt.Errorf("invalid credentials: %v", err)
 	}
@@ -76,7 +82,7 @@ func Login(username string, password string) (*VerifiedUser, error) {
 	if err != nil {
 		return &VerifiedUser{}, fmt.Errorf("token error: %v", err)
 	}
-	verifiedUser := VerifiedUser{user.Username, token}
+	verifiedUser := VerifiedUser{user.Username, user.Watchlist, token}
 	return &verifiedUser, nil
 }
 
@@ -89,6 +95,6 @@ func Register(username string, password string) (*VerifiedUser, error) {
 	if err != nil {
 		return &VerifiedUser{}, fmt.Errorf("token error: %v", err)
 	}
-	verifiedUser := VerifiedUser{user.Username, token}
+	verifiedUser := VerifiedUser{user.Username, user.Watchlist, token}
 	return &verifiedUser, nil
 }

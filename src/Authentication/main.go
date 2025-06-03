@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/zirris512/Authentication/database"
 )
 
 func main() {
@@ -18,7 +19,7 @@ func main() {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:5173"}
-	config.AllowMethods = []string{"GET", "POST"}
+	config.AllowMethods = []string{"GET", "POST", "PUT"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
 	config.AllowCredentials = true
 
@@ -27,11 +28,18 @@ func main() {
 	router.POST("/authentication/register", func(c *gin.Context) {
 		var postBody PostBody
 		if err := c.ShouldBindJSON(&postBody); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 		newUser, err := Register(postBody.Username, postBody.Password)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err = database.AddToken(newUser.Username, newUser.Token)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 		c.JSON(http.StatusOK, newUser)
 	})
@@ -40,10 +48,17 @@ func main() {
 		var postBody PostBody
 		if err := c.ShouldBindJSON(&postBody); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 		verifiedUser, err := Login(postBody.Username, postBody.Password)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
+		}
+		err = database.AddToken(verifiedUser.Username, verifiedUser.Token)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 		c.JSON(http.StatusOK, verifiedUser)
 	})
@@ -54,17 +69,37 @@ func main() {
 		}
 		if err := c.ShouldBindJSON(&postBodyToken); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
 		}
 		err := VerifyToken(postBodyToken.Token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"error": err,
+				"error": err.Error(),
 			})
 			return
 		}
+		user, err := database.GetUserByToken(postBodyToken.Token)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{
-			"authorized": true,
+			"username":  user.Username,
+			"watchlist": user.Watchlist,
 		})
+	})
+
+	router.PUT("/authentication/watchlist", func(c *gin.Context) {
+		var userWatchlist UserWatchlist
+		if err := c.ShouldBindJSON(&userWatchlist); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		err := database.UpdateWatchlist(userWatchlist.Username, userWatchlist.Watchlist)
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+		}
+		c.Status(http.StatusCreated)
 	})
 
 	router.Run(":3301")
